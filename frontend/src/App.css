@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* Override pour éviter le fond blanc */
+html, body, #root {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+
