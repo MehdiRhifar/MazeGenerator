@@ -1,5 +1,5 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { MazeGenerator, WallChange, WallType } from '../../../pkg/pathfinding.js'
+import { MazeGenerator, WallChange, WallType } from '../../../backend/pkg'
 import { MAZE_CONFIG, COLORS } from '../constants/mazeConfig'
 
 interface MazeRendererProps {
@@ -10,6 +10,7 @@ interface MazeRendererProps {
 export interface MazeRendererRef {
   drawFullGrid: () => void
   deleteWallChanges: (changes: WallChange[]) => void
+  addWallChanges: (changes: WallChange[]) => void
   drawCell: (x: number, y: number, color: string) => void
   drawCurrentCell: () => void
 }
@@ -139,6 +140,19 @@ export const MazeRenderer = forwardRef<MazeRendererRef, MazeRendererProps>(
       })
     }
 
+    const addWallChanges = (changes: WallChange[]) => {
+      const canvas = canvasRef.current
+      if (!canvas || !mazeGenerator) return
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      // Ajouter les murs en les dessinant avec la couleur des murs
+      changes.forEach((change) => {
+        drawWallWithColor(change.x, change.y, change.wall_type, COLORS.WALLS, ctx, false)
+      })
+    }
+
     const drawCell = (x: number, y: number, color: string) => {
       const canvas = canvasRef.current
       if (!canvas) return
@@ -181,6 +195,7 @@ export const MazeRenderer = forwardRef<MazeRendererRef, MazeRendererProps>(
     useImperativeHandle(ref, () => ({
       drawFullGrid,
       deleteWallChanges,
+      addWallChanges,
       drawCell,
       drawCurrentCell,
     }))

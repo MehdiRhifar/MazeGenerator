@@ -1,11 +1,14 @@
 import {ANIMATION, GRID_SIZE} from '../constants/mazeConfig'
 import {mazeService} from '../services/mazeService'
+import { AlgorithmKind } from '../../../backend/pkg'
 
 interface MazeControlsProps {
   isGenerating: boolean
   isPaused?: boolean
   speed: number
+  selectedAlgorithm: AlgorithmKind
   onSpeedChange: (speed: number) => void
+  onAlgorithmChange: (algorithm: AlgorithmKind) => void
   onGridSizeChange: (width: number, height: number) => void
   onGenerateInstant: () => void
   onGenerateAnimated: () => void
@@ -19,7 +22,9 @@ export const MazeControls = ({
   isGenerating,
   isPaused = false,
   speed,
+  selectedAlgorithm,
   onSpeedChange,
+  onAlgorithmChange,
   onGridSizeChange,
   onGenerateInstant,
   onGenerateAnimated,
@@ -29,6 +34,14 @@ export const MazeControls = ({
   disabled = false
 }: MazeControlsProps) => {
   const { width: gridWidth, height: gridHeight } = mazeService.getDimensions()
+
+  const algorithms = [
+    { value: AlgorithmKind.Backtracking, label: 'Recursive Backtracking', description: 'DFS avec backtracking, crée de longs passages' },
+    { value: AlgorithmKind.Prim, label: 'Prim (Randomized)', description: 'Expansion progressive, beaucoup de branches courtes' },
+    { value: AlgorithmKind.Kruskal, label: 'Kruskal', description: 'Génération aléatoire avec Union-Find, longs passages sinueux' },
+    { value: AlgorithmKind.Wilson, label: 'Wilson', description: 'Marches aléatoires, labyrinthes parfaitement uniformes' },
+    { value: AlgorithmKind.RecursiveDivision, label: 'Recursive Division', description: 'Division récursive, longues lignes droites' },
+  ]
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -74,6 +87,27 @@ export const MazeControls = ({
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="bg-gray-800 border border-gray-600 rounded-lg p-5">
+        <h2 className="text-lg font-medium text-white mb-4">Algorithme</h2>
+        <div className="space-y-3">
+          {algorithms.map((algo) => (
+            <button
+              key={algo.value}
+              onClick={() => onAlgorithmChange(algo.value)}
+              disabled={disabled || isGenerating || isPaused}
+              className={`w-full text-left px-4 py-3 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                selectedAlgorithm === algo.value
+                  ? 'bg-blue-600 text-white border-2 border-blue-400'
+                  : 'bg-gray-700 text-gray-200 border-2 border-gray-600 hover:bg-gray-600'
+              }`}
+            >
+              <div className="font-medium">{algo.label}</div>
+              <div className="text-sm opacity-80 mt-1">{algo.description}</div>
+            </button>
+          ))}
         </div>
       </div>
 

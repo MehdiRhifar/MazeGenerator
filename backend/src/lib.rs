@@ -2,7 +2,7 @@ mod generators;
 mod maze_grid;
 mod utils;
 
-use generators::{GenerationResult, GeneratorType, Algorithm, WallChange};
+use generators::{GenerationResult, AlgorithmKind, Algorithm};
 use maze_grid::MazeGrid;
 use wasm_bindgen::prelude::*;
 use crate::generators::GenerationAlgorithm;
@@ -47,7 +47,7 @@ impl MazeGenerator {
 
         MazeGenerator {
             grid: MazeGrid::new(width, height),
-            active_generator: Algorithm::new(GeneratorType::Backtracking),
+            active_generator: Algorithm::new(AlgorithmKind::Backtracking),
         }
     }
 
@@ -83,13 +83,13 @@ impl MazeGenerator {
 
     // Générer un labyrinthe complet instantanément avec Backtracking
     #[wasm_bindgen]
-    pub fn generate_maze(&mut self, algorithm: GeneratorType) {
+    pub fn generate_maze(&mut self, algorithm: AlgorithmKind) {
         self.start_generation(algorithm);
         while self.generation_step() == false {}
     }
 
     // Méthode unifiée pour démarrer la génération avec animation
-    pub fn start_generation(&mut self, algorithm: GeneratorType) {
+    pub fn start_generation(&mut self, algorithm: AlgorithmKind) {
         self.active_generator = Algorithm::new(algorithm);
         self.active_generator.start(&mut self.grid);
     }

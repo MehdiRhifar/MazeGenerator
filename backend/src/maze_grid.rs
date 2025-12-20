@@ -2,15 +2,15 @@ use crate::Point;
 
 /// Structure contenant les données de grille du labyrinthe
 /// Sépare les données de la logique de génération
-/// 
+///
 /// Convention des murs :
 /// - vertical_walls[i] : mur vertical à droite de la cellule i
 /// - horizontal_walls[i] : mur horizontal en bas de la cellule i
 /// - Les bordures du labyrinthe sont toujours considérées comme des murs
 /// - Une cellule (x,y) a l'index : y * width + x
 pub struct MazeGrid {
-    pub vertical_walls: Vec<bool>,
-    pub horizontal_walls: Vec<bool>,
+    pub(crate) vertical_walls: Vec<bool>,
+    pub(crate) horizontal_walls: Vec<bool>,
     pub width: usize,
     pub height: usize,
 }
@@ -25,9 +25,7 @@ impl MazeGrid {
             height,
         }
     }
-}
 
-impl MazeGrid {
     pub fn is_valid_point(&self, x: usize, y: usize) -> bool {
         x < self.width && y < self.height
     }
@@ -36,6 +34,7 @@ impl MazeGrid {
         y * self.width + x
     }
 
+    /// Supprime un mur vertical à la position (x, y)
     pub fn remove_vertical_wall(&mut self, x: usize, y: usize) {
         if self.is_valid_point(x, y) {
             let index = self.get_index(x, y);
@@ -43,6 +42,7 @@ impl MazeGrid {
         }
     }
 
+    /// Supprime un mur horizontal à la position (x, y)
     pub fn remove_horizontal_wall(&mut self, x: usize, y: usize) {
         if self.is_valid_point(x, y) {
             let index = self.get_index(x, y);
@@ -50,6 +50,23 @@ impl MazeGrid {
         }
     }
 
+    /// Ajoute un mur vertical à la position (x, y)
+    pub fn add_vertical_wall(&mut self, x: usize, y: usize) {
+        if self.is_valid_point(x, y) {
+            let index = self.get_index(x, y);
+            self.vertical_walls[index] = true;
+        }
+    }
+
+    /// Ajoute un mur horizontal à la position (x, y)
+    pub fn add_horizontal_wall(&mut self, x: usize, y: usize) {
+        if self.is_valid_point(x, y) {
+            let index = self.get_index(x, y);
+            self.horizontal_walls[index] = true;
+        }
+    }
+
+    /// Supprime le mur entre deux cellules adjacentes
     pub fn remove_wall_between(&mut self, from: Point, to: Point) {
         if from.x == to.x {
             // Mouvement vertical
@@ -62,11 +79,13 @@ impl MazeGrid {
         }
     }
 
+    /// Remplit toute la grille de murs
     pub fn fill_grid(&mut self) {
         self.vertical_walls.fill(true);
         self.horizontal_walls.fill(true);
     }
 
+    /// Supprime tous les murs de la grille
     pub fn clear_grid(&mut self) {
         self.vertical_walls.fill(false);
         self.horizontal_walls.fill(false);
@@ -91,13 +110,9 @@ impl MazeGrid {
                 let old_index = self.get_index(x, y);
                 let new_index = y * new_width + x;
 
-                // Copier les murs si ils sont dans les limites
-                if x < min_width {
-                    new_vertical_walls[new_index] = self.vertical_walls[old_index];
-                }
-                if y < min_height {
-                    new_horizontal_walls[new_index] = self.horizontal_walls[old_index];
-                }
+                // Copier les murs
+                new_vertical_walls[new_index] = self.vertical_walls[old_index];
+                new_horizontal_walls[new_index] = self.horizontal_walls[old_index];
             }
         }
 

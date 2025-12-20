@@ -1,0 +1,9 @@
+{
+  "name": "pathfinding",
+  "scripts": {
+    "build:wasm": "cd backend && wasm-pack build --target web",
+    "dev:wasm": "cd backend && cargo watch -s \"wasm-pack build --target web\"",
+    "build": "npm run build:wasm && cd frontend && npm run build",
+    "dev:frontend": "cd frontend && npm run dev"
+  }
+}

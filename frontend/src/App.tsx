@@ -3,7 +3,7 @@ import './App.css'
 import { mazeService } from './services/mazeService'
 import { MazeRenderer, type MazeRendererRef } from './components/MazeRenderer'
 import { MazeControls } from './components/MazeControls'
-import { MazeGenerator } from '../../pkg/pathfinding.js'
+import { MazeGenerator, AlgorithmKind } from '../../backend/pkg'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -11,6 +11,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [speed, setSpeed] = useState(50)
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmKind>(AlgorithmKind.Backtracking)
   const [generator, setGenerator] = useState<MazeGenerator | null>(null)
   const [dimensionsKey, setDimensionsKey] = useState(0) // Pour forcer le re-render
 
@@ -36,15 +37,15 @@ function App() {
   }, [speed])
 
   const handleInstantGeneration = () => {
-    mazeService.generateInstant()
+    mazeService.generateInstant(selectedAlgorithm)
     mazeRendererRef.current?.drawFullGrid()
   }
 
   const handleAnimatedGeneration = () => {
     if (!mazeRendererRef.current) return
-    
 
-    mazeService.prepareGeneration()
+
+    mazeService.prepareGeneration(selectedAlgorithm)
     mazeRendererRef.current.drawFullGrid()
     setIsGenerating(true)
     handleResume()
@@ -60,7 +61,12 @@ function App() {
     mazeService.startAnimation(
       // onStep - mêmes callbacks qu'au démarrage
       (changes) => {
-        mazeRendererRef.current?.deleteWallChanges(changes)
+        // Recursive Division AJOUTE des murs, les autres SUPPRIMENT des murs
+        if (selectedAlgorithm === AlgorithmKind.RecursiveDivision) {
+          mazeRendererRef.current?.addWallChanges(changes)
+        } else {
+          mazeRendererRef.current?.deleteWallChanges(changes)
+        }
         mazeRendererRef.current?.drawCurrentCell()
       },
       // onComplete
@@ -120,14 +126,16 @@ function App() {
     <div className="max-w-6xl mx-auto px-6 py-8">
       <header className="text-center mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Générateur de Labyrinthe</h1>
-        <p className="text-gray-300">Algorithme DFS implémenté en Rust/WebAssembly</p>
+        <p className="text-gray-300">5 algorithmes implémentés en Rust/WebAssembly</p>
       </header>
 
       <MazeControls
         isGenerating={isGenerating}
         isPaused={isPaused}
         speed={speed}
+        selectedAlgorithm={selectedAlgorithm}
         onSpeedChange={setSpeed}
+        onAlgorithmChange={setSelectedAlgorithm}
         onGridSizeChange={handleGridSizeChange}
         onGenerateInstant={handleInstantGeneration}
         onGenerateAnimated={handleAnimatedGeneration}

@@ -3,6 +3,7 @@ use crate::maze_grid::MazeGrid;
 use crate::Point;
 use rand::Rng;
 
+#[derive(Default)]
 pub struct BacktrackingGenerator {
     visited: Vec<bool>,
     stack: Vec<Point>,
@@ -13,17 +14,6 @@ pub struct BacktrackingGenerator {
 }
 
 impl BacktrackingGenerator {
-    pub fn new() -> Self {
-        Self {
-            visited: Vec::new(),
-            stack: Vec::new(),
-            current_point: None,
-            is_finished: false,
-            width: 0,
-            height: 0,
-        }
-    }
-
     fn get_random_unvisited_neighbors(&self, grid: &MazeGrid, point: Point) -> Option<Point> {
         let candidates = [
             (point.x, point.y + 1),

@@ -1,5 +1,5 @@
-import init, { MazeGenerator, GeneratorType, WallChange } from '../../../pkg/pathfinding.js'
-import { MAZE_CONFIG, GRID_SIZE } from '../constants/mazeConfig'
+import init, { MazeGenerator, AlgorithmKind, WallChange } from '../../../backend/pkg/pathfinding.js'
+import { GRID_SIZE } from '../constants/mazeConfig'
 
 interface GenerationStepResult {
   isFinished: boolean;
@@ -22,16 +22,16 @@ export class MazeService {
     return this.generator
   }
 
-  generateInstant() {
+  generateInstant(algorithm: AlgorithmKind) {
     if (!this.generator) return
     this.stopAnimation()
-    this.generator.generate_maze(GeneratorType.Backtracking)
+    this.generator.generate_maze(algorithm)
   }
 
-  prepareGeneration() {
+  prepareGeneration(algorithm: AlgorithmKind) {
     if (!this.generator) return
     this.stopAnimation()
-    this.generator.start_generation(GeneratorType.Backtracking)
+    this.generator.start_generation(algorithm)
   }
 
   startAnimation(onStep: (changes: WallChange[]) => void, onComplete: () => void, getCurrentSpeed: () => number) {
