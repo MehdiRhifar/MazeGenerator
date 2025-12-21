@@ -125,9 +125,21 @@ impl MazeGenerator {
         result_obj
     }
 
-    // Obtenir la position actuelle pour l'animation
-    pub fn get_current_cell(&self) -> Option<Point> {
-        self.active_generator.get_current_position()
+    // Obtenir les layers de cellules pour l'animation
+    // Retourne un tableau de tableaux : [[layer0_cells], [layer1_cells], ...]
+    pub fn get_cell_layers(&self) -> js_sys::Array {
+        let layers = self.active_generator.get_cell_layers();
+        let layers_array = js_sys::Array::new();
+
+        for layer in layers {
+            let layer_array = js_sys::Array::new();
+            for point in layer {
+                layer_array.push(&JsValue::from(point));
+            }
+            layers_array.push(&layer_array);
+        }
+
+        layers_array
     }
 
     // Redimensionner la grille

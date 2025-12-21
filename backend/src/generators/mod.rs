@@ -108,17 +108,6 @@ impl GenerationAlgorithm for Algorithm {
         }
     }
     
-    /// Obtenir la position actuelle (pour l'animation)
-    fn get_current_position(&self) -> Option<Point> {
-        match self {
-            Self::Backtracking(generator) => generator.get_current_position(),
-            Self::Prim(generator) => generator.get_current_position(),
-            Self::Kruskal(generator) => generator.get_current_position(),
-            Self::Wilson(generator) => generator.get_current_position(),
-            Self::RecursiveDivision(generator) => generator.get_current_position(),
-        }
-    }
-    
     /// Obtenir le nom de l'algorithme
     fn get_name(&self) -> &'static str {
         match self {
@@ -129,12 +118,30 @@ impl GenerationAlgorithm for Algorithm {
             Self::RecursiveDivision(generator) => generator.get_name(),
         }
     }
+
+    /// Obtenir les layers de cellules à afficher
+    fn get_cell_layers(&self) -> Vec<Vec<Point>> {
+        match self {
+            Self::Backtracking(generator) => generator.get_cell_layers(),
+            Self::Prim(generator) => generator.get_cell_layers(),
+            Self::Kruskal(generator) => generator.get_cell_layers(),
+            Self::Wilson(generator) => generator.get_cell_layers(),
+            Self::RecursiveDivision(generator) => generator.get_cell_layers(),
+        }
+    }
 }
 
 pub trait GenerationAlgorithm {
     fn start(&mut self, grid: &mut MazeGrid);
     fn step(&mut self, grid: &mut MazeGrid) -> (GenerationResult, Vec<WallChange>);
     fn is_finished(&self) -> bool;
-    fn get_current_position(&self) -> Option<Point>;
     fn get_name(&self) -> &'static str;
+
+    /// Retourner les layers de cellules à afficher avec des couleurs différentes
+    /// - Layer 0 : Cellules principales (ex: chemin actuel)
+    /// - Layer 1 : Cellules secondaires (ex: dans le labyrinthe)
+    /// - Layer 2+ : Autres cellules (ex: frontière, cellules restantes)
+    fn get_cell_layers(&self) -> Vec<Vec<Point>> {
+        Vec::new()  // Implémentation par défaut : aucune cellule
+    }
 }

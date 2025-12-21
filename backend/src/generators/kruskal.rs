@@ -180,11 +180,16 @@ impl GenerationAlgorithm for KruskalGenerator {
         self.is_finished
     }
 
-    fn get_current_position(&self) -> Option<Point> {
-        self.current_point
-    }
-
     fn get_name(&self) -> &'static str {
         "Kruskal's Algorithm"
+    }
+
+    fn get_cell_layers(&self) -> Vec<Vec<Point>> {
+        // Layer 0 : La cellule courante
+        if let Some(point) = self.current_point {
+            vec![vec![point]]
+        } else {
+            vec![]
+        }
     }
 }

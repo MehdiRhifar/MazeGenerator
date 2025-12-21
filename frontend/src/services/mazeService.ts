@@ -36,28 +36,74 @@ export class MazeService {
 
   startAnimation(onStep: (changes: WallChange[]) => void, onComplete: () => void, getCurrentSpeed: () => number) {
     if (!this.generator) return
-    
+
+    let frameCount = 0
+
     const animate = () => {
       if (!this.generator) return
-      const stepResult = this.generator.generation_step_with_changes() as GenerationStepResult
-      onStep(stepResult.changes)
 
-      if (stepResult.isFinished) {
+      const speed = getCurrentSpeed()
+
+      // Logique avec deux modes :
+      // Mode lent (speed 1-80) : 1 step toutes les N frames
+      // Mode rapide (speed 81-100) : N steps par frame
+
+      let stepsPerFrame = 0
+
+      if (speed <= 90) {
+        // Mode lent : attendre plusieurs frames avant de faire 1 step
+        // speed=1 → 30 frames (~2 steps/sec)
+        // speed=90 → 1 frame (~60 steps/sec)
+        const framesPerStep = Math.max(1, Math.round(31 - speed * 0.375))
+
+        frameCount++
+        if (frameCount >= framesPerStep) {
+          stepsPerFrame = 1
+          frameCount = 0
+        }
+      } else {
+        // Mode rapide : faire plusieurs steps par frame
+        // speed=91 → 1 step/frame (~60 steps/sec)
+        // speed=100 → 10 steps/frame (~600 steps/sec)
+        stepsPerFrame = Math.round((speed - 90))
+        frameCount = 0
+      }
+
+      const allChanges: WallChange[] = []
+      let isFinished = false
+
+      // Exécuter les steps
+      for (let i = 0; i < stepsPerFrame; i++) {
+        const stepResult = this.generator.generation_step_with_changes() as GenerationStepResult
+        allChanges.push(...stepResult.changes)
+
+        if (stepResult.isFinished) {
+          isFinished = true
+          break
+        }
+      }
+
+      // Redessiner seulement si on a fait des steps
+      if (stepsPerFrame > 0) {
+        onStep(allChanges)
+      }
+
+      if (isFinished) {
         onComplete()
         this.animationId = null
         return
       }
 
-      const currentDelay = Math.abs(100 - getCurrentSpeed())
-      this.animationId = window.setTimeout(animate, currentDelay)
+      // Utiliser requestAnimationFrame au lieu de setTimeout
+      this.animationId = window.requestAnimationFrame(animate)
     }
 
     animate()
   }
 
   pauseAnimation() {
-    if (this.animationId) {
-      clearTimeout(this.animationId)
+    if (this.animationId !== null) {
+      window.cancelAnimationFrame(this.animationId)
       this.animationId = null
     }
   }
@@ -66,9 +112,11 @@ export class MazeService {
     this.pauseAnimation()
   }
 
-  getCurrentPosition() {
-    if (!this.generator) return
-    return this.generator.get_current_cell()
+  getCellLayers() {
+    if (!this.generator) return []
+    const layers = this.generator.get_cell_layers()
+    // Convertir le tableau JavaScript en tableau TypeScript
+    return Array.from(layers as any)
   }
 
   resizeGrid(width: number, height: number) {

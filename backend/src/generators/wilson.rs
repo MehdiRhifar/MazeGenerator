@@ -4,24 +4,13 @@ use crate::Point;
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum Direction {
-    North,
-    South,
-    East,
-    West,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
 enum WilsonState {
     // Initialisation : choisir une nouvelle cellule de départ
     PickingStart,
-
     // En train de faire une marche aléatoire
     Walking,
-
     // Carving : ajouter le chemin au labyrinthe
     CarvingPath,
-
     // Terminé
     Finished,
 }
@@ -30,16 +19,8 @@ pub struct WilsonGenerator {
     // État des cellules : true = dans le labyrinthe, false = hors du labyrinthe
     in_maze: Vec<bool>,
 
-    // Chemin de la marche aléatoire courante
-    // path[i] = direction pour aller de la cellule i vers la suivante dans le chemin
-    // None si la cellule n'est pas dans le chemin courant
-    path: Vec<Option<Direction>>,
-
-    // Cellule de départ de la marche courante
-    walk_start: Option<Point>,
-
-    // Position courante dans la marche
-    current_position: Option<Point>,
+    // Chemin de la marche aléatoire courante (liste simple de points)
+    current_path: Vec<Point>,
 
     // Liste des cellules pas encore dans le labyrinthe (pour optimisation)
     remaining_cells: Vec<Point>,
@@ -56,9 +37,7 @@ impl Default for WilsonGenerator {
     fn default() -> Self {
         Self {
             in_maze: Vec::new(),
-            path: Vec::new(),
-            walk_start: None,
-            current_position: None,
+            current_path: Vec::new(),
             remaining_cells: Vec::new(),
             state: WilsonState::PickingStart,
             width: 0,
@@ -92,43 +71,12 @@ impl WilsonGenerator {
         neighbors
     }
 
-    fn erase_loop(&mut self, grid: &MazeGrid, loop_start: Point) {
-        // Effacer le chemin depuis loop_start jusqu'à ce qu'on revienne à loop_start
-        let mut current = loop_start;
-
-        loop {
-            let current_index = grid.get_index(current.x, current.y);
-
-            // Obtenir la direction suivante avant de l'effacer
-            let direction = self.path[current_index];
-
-            // Effacer cette étape du chemin
-            self.path[current_index] = None;
-
-            if let Some(dir) = direction {
-                // Avancer dans cette direction
-                current = match dir {
-                    Direction::North => Point { x: current.x, y: current.y - 1 },
-                    Direction::South => Point { x: current.x, y: current.y + 1 },
-                    Direction::East => Point { x: current.x + 1, y: current.y },
-                    Direction::West => Point { x: current.x - 1, y: current.y },
-                };
-
-                // Si on revient au point de départ de la boucle, arrêter
-                if current == loop_start {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-    }
 
     fn step_picking_start(&mut self, _grid: &MazeGrid) -> (GenerationResult, Vec<WallChange>) {
         // Si toutes les cellules sont dans le labyrinthe, terminé
         if self.remaining_cells.is_empty() {
             self.state = WilsonState::Finished;
-            self.current_position = None;
+            self.current_path.clear();
             return (GenerationResult::Finished, Vec::new());
         }
 
@@ -137,11 +85,8 @@ impl WilsonGenerator {
         let start_index = rng.random_range(0..self.remaining_cells.len());
         let start_point = self.remaining_cells[start_index];
 
-        self.walk_start = Some(start_point);
-        self.current_position = Some(start_point);
-
-        // Réinitialiser le chemin
-        self.path.fill(None);
+        // Démarrer un nouveau chemin avec ce point
+        self.current_path = vec![start_point];
 
         // Passer à l'état marche
         self.state = WilsonState::Walking;
@@ -150,14 +95,14 @@ impl WilsonGenerator {
     }
 
     fn step_walking(&mut self, grid: &MazeGrid) -> (GenerationResult, Vec<WallChange>) {
-        let current = self.current_position.unwrap();
+        // La dernière cellule du chemin est la position actuelle
+        let current = *self.current_path.last().unwrap();
         let current_index = grid.get_index(current.x, current.y);
 
         // Vérifier si on a atteint le labyrinthe
         if self.in_maze[current_index] {
             // On a atteint le labyrinthe, passer à l'état "carving"
             self.state = WilsonState::CarvingPath;
-            self.current_position = self.walk_start;
             return (GenerationResult::Continue, Vec::new());
         }
 
@@ -166,43 +111,28 @@ impl WilsonGenerator {
         let mut rng = rand::rng();
         let next_point = neighbors[rng.random_range(0..neighbors.len())];
 
-        // Déterminer la direction
-        let direction = if next_point.x > current.x {
-            Direction::East
-        } else if next_point.x < current.x {
-            Direction::West
-        } else if next_point.y > current.y {
-            Direction::South
+        // Vérifier si on crée une boucle (next_point est déjà dans le chemin)
+        if let Some(loop_index) = self.current_path.iter().position(|&p| p == next_point) {
+            // Boucle détectée : garder seulement le chemin jusqu'à loop_index (inclus)
+            self.current_path.truncate(loop_index + 1);
         } else {
-            Direction::North
-        };
-
-        // Vérifier si on crée une boucle
-        let next_index = grid.get_index(next_point.x, next_point.y);
-        if self.path[next_index].is_some() {
-            // On crée une boucle, effacer depuis next_point jusqu'à current
-            self.erase_loop(grid, next_point);
+            // Pas de boucle : ajouter le nouveau point au chemin
+            self.current_path.push(next_point);
         }
-
-        // Ajouter la direction au chemin
-        self.path[current_index] = Some(direction);
-
-        // Avancer
-        self.current_position = Some(next_point);
 
         (GenerationResult::Continue, Vec::new())
     }
 
     fn step_carving_path(&mut self, grid: &mut MazeGrid) -> (GenerationResult, Vec<WallChange>) {
-        let current = self.current_position.unwrap();
-        let current_index = grid.get_index(current.x, current.y);
-
-        // Si on a atteint le labyrinthe, terminé avec ce chemin
-        if self.in_maze[current_index] {
-            // Retourner à l'état "choisir une nouvelle cellule"
+        // Le chemin ne devrait pas être vide ici
+        if self.current_path.is_empty() {
             self.state = WilsonState::PickingStart;
             return (GenerationResult::Continue, Vec::new());
         }
+
+        // Prendre la dernière cellule du chemin (fin de la pile)
+        let current = *self.current_path.last().unwrap();
+        let current_index = grid.get_index(current.x, current.y);
 
         // Ajouter la cellule courante au labyrinthe
         self.in_maze[current_index] = true;
@@ -212,59 +142,37 @@ impl WilsonGenerator {
             self.remaining_cells.swap_remove(pos);
         }
 
-        // Obtenir la direction suivante - si None, on a fini ce chemin
-        let Some(direction) = self.path[current_index] else {
-            // Pas de direction, retourner à picking start
+        // S'il n'y a qu'une cellule dans le chemin, on a fini
+        if self.current_path.len() == 1 {
+            self.current_path.clear();
             self.state = WilsonState::PickingStart;
             return (GenerationResult::Continue, Vec::new());
+        }
+
+        // Sinon, supprimer le mur entre current et la cellule précédente (avant-dernière)
+        let next = self.current_path[self.current_path.len() - 2];
+
+        // Déterminer quel mur supprimer
+        let wall_change = if next.x > current.x {
+            // Mur vertical à droite de current
+            grid.remove_vertical_wall(current.x, current.y);
+            WallChange { x: current.x, y: current.y, wall_type: WallType::Vertical }
+        } else if next.x < current.x {
+            // Mur vertical à gauche de current (= à droite de next)
+            grid.remove_vertical_wall(next.x, next.y);
+            WallChange { x: next.x, y: next.y, wall_type: WallType::Vertical }
+        } else if next.y > current.y {
+            // Mur horizontal en bas de current
+            grid.remove_horizontal_wall(current.x, current.y);
+            WallChange { x: current.x, y: current.y, wall_type: WallType::Horizontal }
+        } else {
+            // Mur horizontal en haut de current (= en bas de next)
+            grid.remove_horizontal_wall(next.x, next.y);
+            WallChange { x: next.x, y: next.y, wall_type: WallType::Horizontal }
         };
 
-        // Déterminer le point suivant
-        let next_point = match direction {
-            Direction::North => Point { x: current.x, y: current.y - 1 },
-            Direction::South => Point { x: current.x, y: current.y + 1 },
-            Direction::East => Point { x: current.x + 1, y: current.y },
-            Direction::West => Point { x: current.x - 1, y: current.y },
-        };
-
-        // Supprimer le mur entre current et next
-        let wall_change = match direction {
-            Direction::East => {
-                grid.remove_vertical_wall(current.x, current.y);
-                WallChange {
-                    x: current.x,
-                    y: current.y,
-                    wall_type: WallType::Vertical,
-                }
-            }
-            Direction::West => {
-                grid.remove_vertical_wall(next_point.x, next_point.y);
-                WallChange {
-                    x: next_point.x,
-                    y: next_point.y,
-                    wall_type: WallType::Vertical,
-                }
-            }
-            Direction::South => {
-                grid.remove_horizontal_wall(current.x, current.y);
-                WallChange {
-                    x: current.x,
-                    y: current.y,
-                    wall_type: WallType::Horizontal,
-                }
-            }
-            Direction::North => {
-                grid.remove_horizontal_wall(next_point.x, next_point.y);
-                WallChange {
-                    x: next_point.x,
-                    y: next_point.y,
-                    wall_type: WallType::Horizontal,
-                }
-            }
-        };
-
-        // Avancer
-        self.current_position = Some(next_point);
+        // Retirer la dernière cellule du chemin
+        self.current_path.pop();
 
         (GenerationResult::Continue, vec![wall_change])
     }
@@ -278,7 +186,7 @@ impl GenerationAlgorithm for WilsonGenerator {
 
         // Initialiser les états
         self.in_maze = vec![false; total_cells];
-        self.path = vec![None; total_cells];
+        self.current_path = Vec::new();
 
         // Remplir la grille de murs
         grid.fill_grid();
@@ -301,8 +209,6 @@ impl GenerationAlgorithm for WilsonGenerator {
 
         // Commencer avec l'état "choisir une nouvelle cellule"
         self.state = WilsonState::PickingStart;
-        self.walk_start = None;
-        self.current_position = Some(start_point);
     }
 
     fn step(&mut self, grid: &mut MazeGrid) -> (GenerationResult, Vec<WallChange>) {
@@ -318,11 +224,28 @@ impl GenerationAlgorithm for WilsonGenerator {
         self.state == WilsonState::Finished
     }
 
-    fn get_current_position(&self) -> Option<Point> {
-        self.current_position
-    }
-
     fn get_name(&self) -> &'static str {
         "Wilson's Algorithm"
+    }
+
+    fn get_cell_layers(&self) -> Vec<Vec<Point>> {
+        let mut layers = Vec::new();
+
+        // Layer 0 : Cellules dans le labyrinthe (vert - le "but")
+        let mut maze_cells = Vec::new();
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let index = y * self.width + x;
+                if self.in_maze[index] {
+                    maze_cells.push(Point { x, y });
+                }
+            }
+        }
+        layers.push(maze_cells);
+
+        // Layer 1 : Le chemin de la marche aléatoire (bleu)
+        layers.push(self.current_path.clone());
+
+        layers
     }
 }

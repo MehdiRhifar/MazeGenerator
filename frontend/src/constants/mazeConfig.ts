@@ -10,8 +10,13 @@ export const COLORS = {
   BACKGROUND: '#f5f5f5',
   GRID_LINES: '#e0e0e0',
   WALLS: '#1a1a1a',
-  CURRENT_CELL: 'rgba(255, 0, 0, 0.4)',
 } as const
+
+// Couleurs des layers (ordre = Layer 0, Layer 1, Layer 2, ...)
+export const LAYER_COLORS = [
+  'rgba(34, 197, 94, 0.80)',    // Layer 0 : Vert - Cellules dans le labyrinthe (le "but")
+  'rgba(59, 130, 246, 0.85)',   // Layer 1 : Bleu - Le chemin de la marche aléatoire
+] as const
 
 export const ANIMATION = {
   MIN_SPEED: 1,

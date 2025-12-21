@@ -1,6 +1,6 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { MazeGenerator, WallChange, WallType } from '../../../backend/pkg'
-import { MAZE_CONFIG, COLORS } from '../constants/mazeConfig'
+import { MAZE_CONFIG, COLORS, LAYER_COLORS } from '../constants/mazeConfig'
 
 interface MazeRendererProps {
   mazeGenerator: MazeGenerator | null
@@ -18,7 +18,8 @@ export interface MazeRendererRef {
 export const MazeRenderer = forwardRef<MazeRendererRef, MazeRendererProps>(
   ({ mazeGenerator, dimensionsKey }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const lastCurrentCellRef = useRef<{ x: number; y: number } | null>(null)
+    const lastLayersRef = useRef<Array<Array<{ x: number; y: number }>>>([])
+
 
     const drawFullGrid = () => {
       const canvas = canvasRef.current
@@ -174,22 +175,79 @@ export const MazeRenderer = forwardRef<MazeRendererRef, MazeRendererProps>(
 
     const drawCurrentCell = () => {
       if (!mazeGenerator) return
-      
-      const currentCell = mazeGenerator.get_current_cell()
-      const lastCell = lastCurrentCellRef.current
-      
-      // Effacer l'ancienne position si elle existe et est différente
-      if (lastCell && (!currentCell || lastCell.x !== currentCell.x || lastCell.y !== currentCell.y)) {
-        drawCell(lastCell.x, lastCell.y, COLORS.BACKGROUND)
+
+      const cellLayers = mazeGenerator.get_cell_layers()
+      const lastLayers = lastLayersRef.current
+
+      // Convertir les nouveaux layers en structure utilisable
+      const newLayers: Array<Array<{ x: number; y: number }>> = []
+      const newLayerSets: Array<Set<string>> = []
+
+      // Préparer les nouveaux layers
+      for (let layerIndex = 0; layerIndex < cellLayers.length; layerIndex++) {
+        const layer = cellLayers[layerIndex] as Array<{ x: number; y: number }>
+        const newLayerSet = new Set<string>()
+        const newLayerCells: Array<{ x: number; y: number }> = []
+
+        for (let i = 0; i < layer.length; i++) {
+          const cell = layer[i] as any
+          if (cell && typeof cell.x === 'number' && typeof cell.y === 'number') {
+            const key = `${cell.x},${cell.y}`
+            newLayerSet.add(key)
+            newLayerCells.push({ x: cell.x, y: cell.y })
+          }
+        }
+
+        newLayers.push(newLayerCells)
+        newLayerSets.push(newLayerSet)
       }
-      
-      // Dessiner la nouvelle position
-      if (currentCell) {
-        drawCell(currentCell.x, currentCell.y, COLORS.CURRENT_CELL)
-        lastCurrentCellRef.current = { x: currentCell.x, y: currentCell.y }
-      } else {
-        lastCurrentCellRef.current = null
+
+      // Fonction helper : trouver la couleur à afficher pour une cellule donnée
+      // Parcourt les layers du plus haut (priorité) au plus bas
+      const getCellColor = (x: number, y: number, maxLayer: number): string => {
+        const key = `${x},${y}`
+        for (let i = maxLayer; i >= 0; i--) {
+          if (newLayerSets[i] && newLayerSets[i].has(key)) {
+            return LAYER_COLORS[i] || LAYER_COLORS[0]
+          }
+        }
+        return COLORS.BACKGROUND
       }
+
+      // Traiter chaque layer pour détecter les changements
+      for (let layerIndex = 0; layerIndex < Math.max(cellLayers.length, lastLayers.length); layerIndex++) {
+        const lastLayerCells = lastLayers[layerIndex] || []
+        const newLayerCells = newLayers[layerIndex] || []
+
+        // Créer un Set des anciennes cellules
+        const lastLayerSet = new Set<string>()
+        lastLayerCells.forEach(cell => {
+          lastLayerSet.add(`${cell.x},${cell.y}`)
+        })
+
+        const currentLayerSet = newLayerSets[layerIndex] || new Set<string>()
+        const color = LAYER_COLORS[layerIndex] || LAYER_COLORS[0]
+
+        // Dessiner les nouvelles cellules de ce layer
+        newLayerCells.forEach(cell => {
+          const key = `${cell.x},${cell.y}`
+          if (!lastLayerSet.has(key)) {
+            drawCell(cell.x, cell.y, color)
+          }
+        })
+
+        // Pour les cellules qui ont disparu de ce layer, redessiner avec la bonne couleur
+        lastLayerCells.forEach(cell => {
+          const key = `${cell.x},${cell.y}`
+          if (!currentLayerSet.has(key)) {
+            // Trouver quelle couleur devrait avoir cette cellule maintenant
+            const newColor = getCellColor(cell.x, cell.y, layerIndex - 1)
+            drawCell(cell.x, cell.y, newColor)
+          }
+        })
+      }
+
+      lastLayersRef.current = newLayers
     }
 
     useImperativeHandle(ref, () => ({
@@ -203,7 +261,7 @@ export const MazeRenderer = forwardRef<MazeRendererRef, MazeRendererProps>(
     useEffect(() => {
       if (mazeGenerator) {
         drawFullGrid()
-        lastCurrentCellRef.current = null
+        lastLayersRef.current = []
       }
     }, [mazeGenerator, dimensionsKey])
 
