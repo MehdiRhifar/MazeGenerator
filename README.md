@@ -36,58 +36,101 @@ npm run dev:wasm  # Terminal 1
 npm run dev:frontend  # Terminal 2
 ```
 
-## Déploiement sur Vercel
+## Déploiement sur Vercel via GitHub Actions
 
-Le déploiement sur Vercel se fait avec une compilation manuelle du WASM avant le push.
+Le projet utilise GitHub Actions pour compiler le WASM et déployer automatiquement sur Vercel.
 
-### Étapes de déploiement
+### Configuration initiale (à faire une seule fois)
 
-1. **Compiler le WASM localement** :
+#### 1. Obtenir les tokens Vercel
+
+**VERCEL_TOKEN** :
+1. Va sur [Vercel Settings → Tokens](https://vercel.com/account/tokens)
+2. Clique sur "Create Token"
+3. Nomme-le "GitHub Actions"
+4. Copie le token (tu ne pourras plus le voir après)
+
+**VERCEL_ORG_ID** et **VERCEL_PROJECT_ID** :
+1. Installe Vercel CLI localement : `npm i -g vercel`
+2. Dans le dossier `frontend/`, lance : `vercel link`
+3. Suis les instructions pour lier ton projet
+4. Un dossier `.vercel` sera créé avec un fichier `project.json`
+5. Récupère les IDs :
    ```bash
-   npm run build:wasm
+   cat frontend/.vercel/project.json
    ```
-   Cela compile le backend Rust en WASM dans le dossier `backend/pkg/` et supprime automatiquement le `.gitignore` créé par wasm-pack.
-
-2. **Commiter les fichiers WASM** :
-   ```bash
-   git add backend/pkg/
-   git add .
-   git commit -m "Build WASM for deployment"
-   ```
-
-3. **Push vers GitHub** :
-   ```bash
-   git push
+   Tu verras quelque chose comme :
+   ```json
+   {
+     "orgId": "team_xxxxxxxxxxxxx",
+     "projectId": "prj_xxxxxxxxxxxxx"
+   }
    ```
 
-4. **Déployer sur Vercel** :
-   - Connecte ton repo GitHub à Vercel
-   - Vercel utilisera automatiquement la configuration de `vercel.json`
-   - Le build se fera uniquement pour le frontend (le WASM est déjà compilé)
+#### 2. Ajouter les secrets dans GitHub
 
-### Pourquoi cette approche ?
+1. Va sur ton repo GitHub → **Settings** → **Secrets and variables** → **Actions**
+2. Clique sur "New repository secret"
+3. Ajoute ces 3 secrets :
+   - `VERCEL_TOKEN` : le token créé à l'étape 1
+   - `VERCEL_ORG_ID` : le `orgId` du fichier `project.json`
+   - `VERCEL_PROJECT_ID` : le `projectId` du fichier `project.json`
 
-- Vercel n'a pas Rust/Cargo installé par défaut
-- La compilation du WASM en local permet un déploiement plus rapide
-- Les fichiers WASM compilés sont versionnés dans Git pour Vercel
+### Workflow de déploiement
 
-**Note importante** : wasm-pack crée automatiquement un `.gitignore` dans `pkg/` qui ignore tous les fichiers. Le script `build:wasm` supprime automatiquement ce fichier pour permettre le versionnement des fichiers WASM.
+Une fois configuré, le déploiement est **entièrement automatique** :
 
-### Configuration Vercel
+1. Tu modifies le code et commit
+2. Tu push vers `master`
+3. GitHub Actions se déclenche automatiquement :
+   - Compile le backend Rust en WASM
+   - Build le frontend
+   - Déploie sur Vercel
+4. Ton site est mis à jour ! 🚀
 
-Le fichier `vercel.json` est déjà configuré pour :
-- Builder uniquement le frontend (`buildCommand: "cd frontend && npm install && npm run build"`)
-- Utiliser le dossier `frontend/dist` comme sortie
-- Le WASM pré-compilé est dans `backend/pkg/` et sera utilisé par le frontend
+Tu peux suivre le déploiement dans l'onglet **Actions** de ton repo GitHub.
 
-## Structure du projet
+### Preview deployments
+
+Les Pull Requests déclenchent aussi un déploiement de preview automatique pour tester avant de merger.
+
+## Architecture
 
 ```
 .
-├── backend/           # Backend Rust compilé en WASM
-│   ├── src/          # Code source Rust
-│   └── pkg/          # WASM compilé (versionné pour Vercel)
-├── frontend/         # Frontend React + TypeScript
+├── backend/              # Backend Rust compilé en WASM
+│   ├── src/             # Code source Rust
+│   ├── pkg/             # WASM compilé (généré, ignoré par Git)
+│   └── target/          # Artefacts Cargo (ignoré par Git)
+├── frontend/            # Frontend React + TypeScript
 │   └── src/
-└── vercel.json       # Configuration Vercel
+└── .github/
+    └── workflows/
+        └── deploy.yml   # GitHub Actions pour CI/CD
 ```
+
+## Comment ça fonctionne ?
+
+### Le processus de build
+
+1. **Rust → WASM** : Le code Rust dans `backend/src/` est compilé en WebAssembly
+2. **wasm-pack** : Génère les bindings JavaScript dans `backend/pkg/`
+3. **Frontend** : Importe le WASM depuis `backend/pkg/pathfinding.js`
+4. **Vite** : Bundle tout pour la production dans `frontend/dist/`
+
+### GitHub Actions
+
+Le workflow `.github/workflows/deploy.yml` :
+- Se déclenche sur les push vers `master` ou les Pull Requests
+- Installe Rust et wasm-pack
+- Compile le WASM (qui n'est pas versionné dans Git)
+- Build le frontend avec le WASM compilé
+- Déploie sur Vercel via Vercel CLI
+
+### Pourquoi cette approche ?
+
+- ✅ Pas de fichiers générés dans Git (propre)
+- ✅ Build automatique à chaque push
+- ✅ Preview deployments pour les PR
+- ✅ Cache Cargo pour des builds rapides
+- ✅ Workflow professionnel et reproductible
