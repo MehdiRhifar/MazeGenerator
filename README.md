@@ -2,6 +2,9 @@
 
 Générateur de labyrinthes aléatoires avec backend Rust/WASM et frontend React.
 
+
+[https://maze-generator-mehdi-rhifar.vercel.app]([https://link-url-here.org](https://maze-generator-mehdi-rhifar.vercel.app))
+
 ## Algorithmes disponibles
 
 - Recursive Backtracking
