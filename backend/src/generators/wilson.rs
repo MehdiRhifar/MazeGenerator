@@ -231,6 +231,10 @@ impl GenerationAlgorithm for WilsonGenerator {
     fn get_cell_layers(&self) -> Vec<Vec<Point>> {
         let mut layers = Vec::new();
 
+
+        // Layer 1 : Le chemin de la marche aléatoire (bleu)
+        layers.push(self.current_path.clone());
+        
         // Layer 0 : Cellules dans le labyrinthe (vert - le "but")
         let mut maze_cells = Vec::new();
         for y in 0..self.height {
@@ -242,9 +246,6 @@ impl GenerationAlgorithm for WilsonGenerator {
             }
         }
         layers.push(maze_cells);
-
-        // Layer 1 : Le chemin de la marche aléatoire (bleu)
-        layers.push(self.current_path.clone());
 
         layers
     }

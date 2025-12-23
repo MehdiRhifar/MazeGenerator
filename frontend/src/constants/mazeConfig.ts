@@ -14,8 +14,8 @@ export const COLORS = {
 
 // Couleurs des layers (ordre = Layer 0, Layer 1, Layer 2, ...)
 export const LAYER_COLORS = [
-  'rgba(34, 197, 94, 0.80)',    // Layer 0 : Vert - Cellules dans le labyrinthe (le "but")
   'rgba(59, 130, 246, 0.85)',   // Layer 1 : Bleu - Le chemin de la marche aléatoire
+  'rgba(34, 197, 94, 0.80)',    // Layer 0 : Vert - Cellules dans le labyrinthe (le "but")
 ] as const
 
 export const ANIMATION = {

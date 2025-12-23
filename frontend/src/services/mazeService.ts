@@ -37,43 +37,30 @@ export class MazeService {
   startAnimation(onStep: (changes: WallChange[]) => void, onComplete: () => void, getCurrentSpeed: () => number) {
     if (!this.generator) return
 
-    let frameCount = 0
+    const MAX_STEPS_PER_FRAME = 150 // Limite pour garder l'UI fluide
 
-    const animate = () => {
+    let lastTime = performance.now()
+    let stepDebt = 0
+
+    const animate = (currentTime: number) => {
       if (!this.generator) return
 
+      const deltaTime = currentTime - lastTime
+      lastTime = currentTime
+
+      // Calcul de la vitesse : stepsPerSecond = 1.07 ^ speed
       const speed = getCurrentSpeed()
+      const stepsPerSecond = Math.pow(1.07, speed)
 
-      // Logique avec deux modes :
-      // Mode lent (speed 1-80) : 1 step toutes les N frames
-      // Mode rapide (speed 81-100) : N steps par frame
-
-      let stepsPerFrame = 0
-
-      if (speed <= 90) {
-        // Mode lent : attendre plusieurs frames avant de faire 1 step
-        // speed=1 → 30 frames (~2 steps/sec)
-        // speed=90 → 1 frame (~60 steps/sec)
-        const framesPerStep = Math.max(1, Math.round(31 - speed * 0.375))
-
-        frameCount++
-        if (frameCount >= framesPerStep) {
-          stepsPerFrame = 1
-          frameCount = 0
-        }
-      } else {
-        // Mode rapide : faire plusieurs steps par frame
-        // speed=91 → 1 step/frame (~60 steps/sec)
-        // speed=100 → 10 steps/frame (~600 steps/sec)
-        stepsPerFrame = Math.round((speed - 90))
-        frameCount = 0
-      }
+      // Accumulation des steps + limite de sécurité
+      stepDebt += stepsPerSecond * (deltaTime / 1000)
+      const stepsToExecute = Math.min(Math.floor(stepDebt), MAX_STEPS_PER_FRAME)
+      stepDebt -= stepsToExecute
 
       const allChanges: WallChange[] = []
       let isFinished = false
 
-      // Exécuter les steps
-      for (let i = 0; i < stepsPerFrame; i++) {
+      for (let i = 0; i < stepsToExecute; i++) {
         const stepResult = this.generator.generation_step_with_changes() as GenerationStepResult
         allChanges.push(...stepResult.changes)
 
@@ -83,8 +70,7 @@ export class MazeService {
         }
       }
 
-      // Redessiner seulement si on a fait des steps
-      if (stepsPerFrame > 0) {
+      if (stepsToExecute > 0) {
         onStep(allChanges)
       }
 
@@ -94,11 +80,10 @@ export class MazeService {
         return
       }
 
-      // Utiliser requestAnimationFrame au lieu de setTimeout
       this.animationId = window.requestAnimationFrame(animate)
     }
 
-    animate()
+    this.animationId = window.requestAnimationFrame(animate)
   }
 
   pauseAnimation() {

@@ -1,0 +1,37 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_get_point_x: (a: number) => number;
+export const __wbg_get_point_y: (a: number) => number;
+export const __wbg_mazegenerator_free: (a: number, b: number) => void;
+export const __wbg_point_free: (a: number, b: number) => void;
+export const __wbg_set_point_x: (a: number, b: number) => void;
+export const __wbg_set_point_y: (a: number, b: number) => void;
+export const greet: () => void;
+export const mazegenerator_clear_grid: (a: number) => void;
+export const mazegenerator_fill_grid: (a: number) => void;
+export const mazegenerator_generate_maze: (a: number, b: number) => void;
+export const mazegenerator_generation_step: (a: number) => number;
+export const mazegenerator_generation_step_with_changes: (a: number) => any;
+export const mazegenerator_get_cell_layers: (a: number) => any;
+export const mazegenerator_get_grid_height: (a: number) => number;
+export const mazegenerator_get_grid_width: (a: number) => number;
+export const mazegenerator_has_horizontal_wall: (a: number, b: number, c: number) => number;
+export const mazegenerator_has_vertical_wall: (a: number, b: number, c: number) => number;
+export const mazegenerator_new: (a: number, b: number) => number;
+export const mazegenerator_resize_grid: (a: number, b: number, c: number) => void;
+export const mazegenerator_start_generation: (a: number, b: number) => void;
+export const __wbg_get_wallchange_wall_type: (a: number) => number;
+export const __wbg_get_wallchange_x: (a: number) => number;
+export const __wbg_get_wallchange_y: (a: number) => number;
+export const __wbg_set_wallchange_wall_type: (a: number, b: number) => void;
+export const __wbg_set_wallchange_x: (a: number, b: number) => void;
+export const __wbg_set_wallchange_y: (a: number, b: number) => void;
+export const __wbg_wallchange_free: (a: number, b: number) => void;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __wbindgen_exn_store: (a: number) => void;
+export const __externref_table_alloc: () => number;
+export const __wbindgen_externrefs: WebAssembly.Table;
+export const __wbindgen_start: () => void;
